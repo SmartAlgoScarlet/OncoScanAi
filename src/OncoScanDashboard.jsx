@@ -39,7 +39,7 @@ export default function OncoScanDashboard() {
   body: formData
 });
 
-      const data = await res.json();
+      const data = await response.json();
 
       setLoading(false);
       setResult({
