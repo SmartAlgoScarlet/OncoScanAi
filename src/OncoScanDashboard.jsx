@@ -1,33 +1,31 @@
 import React, { useState } from 'react';
-import { Upload, AlertCircle, RefreshCw, FileText, ArrowRight } from 'lucide-react';
 
 export default function OncoScanDashboard() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [symptoms, setSymptoms] = useState({
-    duration: 'Under 1 month',
-    changes: 'Yes (growing/changing shape)',
-    sensation: 'Itching or bleeding'
+    duration: '1 to 6 months',
+    physicalChanges: 'Unsure',
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  // Handle file selection
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
-      setResult(null);
     }
   };
 
-  // Handle form submission to FastAPI backend
-  const handleAnalyze = async (e) => {
-    e.preventDefault();
-    if (!selectedFile) return;
+  const handleAnalyze = async () => {
+    if (!selectedFile) {
+      alert('Please upload a diagnostic scan image first.');
+      return;
+    }
 
     setLoading(true);
+    setResult(null);
 
     try {
       const formData = new FormData();
@@ -35,224 +33,88 @@ export default function OncoScanDashboard() {
       formData.append('symptoms', JSON.stringify(symptoms));
 
       const response = await fetch('https://oncoscanai.onrender.com/predict', {
-  method: 'POST',
-  body: formData
-});
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
 
       const data = await response.json();
-
-      setLoading(false);
-      setResult({
-        riskScore: data.riskScore,
-        status: data.status,
-        recommendation: data.recommendation,
-        heatmapUrl: previewUrl
-      });
+      setResult(data);
     } catch (error) {
-      console.error("Backend connection error:", error);
+      console.error('Inference error:', error);
+      alert(`Error connecting to backend: ${error.message}`);
+    } finally {
       setLoading(false);
-      alert("Failed to connect to FastAPI backend. Ensure python main.py is running!");
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        {/* Header Section */}
-        <header className="border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
-              OncoScan AI
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Multi-Modal Early Screening & Visual Segmentation Assistant
-            </p>
-          </div>
-          <div className="bg-blue-950/50 border border-blue-800/50 text-blue-300 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-            CodeTheCure Hackathon Prototype
-          </div>
-        </header>
+    <div style={{ minHeight: '100vh', backgroundColor: '#0a0d14', color: '#fff', padding: '2rem', fontFamily: 'sans-serif' }}>
+      <header style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '2.5rem', margin: 0, color: '#38bdf8' }}>OncoScan AI</h1>
+        <p style={{ color: '#94a3b8' }}>Multi-Modal Early Screening & Visual Segmentation</p>
+      </header>
 
-        {/* Main Grid Work Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Left Column: Upload & Form Inputs */}
-          <div className="lg:col-span-5 space-y-6">
-            <form onSubmit={handleAnalyze} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-6">
-              <h2 className="text-lg font-semibold text-slate-200">1. Upload Diagnostic Scan</h2>
-              
-              {/* Dropzone */}
-              <div className="relative border-2 border-dashed border-slate-700 hover:border-blue-500 transition rounded-xl p-6 text-center cursor-pointer bg-slate-950/50">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="flex flex-col items-center justify-center space-y-2">
-                  <Upload className="w-8 h-8 text-blue-400" />
-                  <p className="text-sm font-medium text-slate-300">
-                    {selectedFile ? selectedFile.name : "Drag & drop scan image here, or click to browse"}
-                  </p>
-                  <p className="text-xs text-slate-500">Supports PNG, JPG, DICOM preview formats</p>
-                </div>
-              </div>
-
-              {/* Symptom Cross-Check Questionnaire */}
-              <div className="space-y-4 pt-2">
-                <h2 className="text-lg font-semibold text-slate-200">2. Clinical Observations</h2>
-                
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Duration of lesion / anomaly</label>
-                  <select 
-                    value={symptoms.duration}
-                    onChange={(e) => setSymptoms({...symptoms, duration: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                  >
-                    <option>Under 1 month</option>
-                    <option>1 to 6 months</option>
-                    <option>Over 6 months</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Noticeable physical changes?</label>
-                  <select 
-                    value={symptoms.changes}
-                    onChange={(e) => setSymptoms({...symptoms, changes: e.target.value})}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                  >
-                    <option>Yes (growing/changing shape)</option>
-                    <option>No noticeable changes</option>
-                    <option>Unsure</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={!selectedFile || loading}
-                className={`w-full py-3 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition shadow-lg ${
-                  !selectedFile || loading 
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Running Grad-CAM Inference...
-                  </>
-                ) : (
-                  <>
-                    Analyze Scan
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-
-          {/* Right Column: Dual-View Analysis Canvas & Results */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl min-h-[480px] flex flex-col justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-200 mb-4">Diagnostic Segmentation Results</h2>
-
-                {previewUrl ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Original Scan */}
-                    <div className="space-y-2">
-                      <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Original Scan</span>
-                      <div className="aspect-square bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center">
-                        <img src={previewUrl} alt="Original Scan" className="object-cover w-full h-full" />
-                      </div>
-                    </div>
-
-                    {/* AI Heatmap Overlay */}
-                    <div className="space-y-2">
-                      <span className="text-xs font-medium text-teal-400 uppercase tracking-wider flex items-center gap-1">
-                        Grad-CAM Saliency Map
-                      </span>
-                      <div className="aspect-square bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center relative">
-                        <img src={previewUrl} alt="AI Heatmap" className="object-cover w-full h-full filter contrast-125" />
-                        {result && (
-                          <div className="absolute inset-0 bg-red-500/20 mix-blend-color-burn pointer-events-none border-2 border-red-500/50 animate-pulse"></div>
-                        )}
-                        {!result && !loading && (
-                          <div className="absolute inset-0 bg-slate-950/60 flex items-center justify-center text-xs text-slate-400">
-                            Awaiting analysis...
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-72 border border-dashed border-slate-800 rounded-xl flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-2">
-                    <AlertCircle className="w-8 h-8 text-slate-600" />
-                    <p>Upload a scan image on the left to activate the visualization canvas.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Summary Stats Box */}
-              {result && (
-                <div className="mt-6 bg-red-950/20 border border-red-900/40 rounded-xl p-4 space-y-3 animate-fade-in">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-red-400 font-semibold text-sm">
-                      <AlertCircle className="w-5 h-5" />
-                      {result.status}
-                    </div>
-                    <span className="bg-red-900/40 text-red-300 px-2.5 py-1 rounded-md text-xs font-bold">
-                      Risk Score: {result.riskScore}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300">{result.recommendation}</p>
-                  <div className="pt-2 flex justify-end">
-                    <button 
-                      onClick={() => {
-                        const reportContent = `
-==================================================
-        ONCOSCAN AI - CLINICAL REPORT
-==================================================
-Date: ${new Date().toLocaleDateString()}
-Status: ${result.status}
-Calculated Risk Score: ${result.riskScore}%
-
-CLINICAL OBSERVATIONS:
-- Duration: ${symptoms.duration}
-- Physical Changes: ${symptoms.changes}
-
-RECOMMENDATION:
-${result.recommendation}
-
-Disclaimer: This report is generated by an AI screening prototype for the CodeTheCure Hackathon and should be validated by a certified medical professional.
-==================================================
-                        `.trim();
-
-                        const blob = new Blob([reportContent], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.href = url;
-                        link.download = `OncoScan_Clinical_Report_${Date.now()}.txt`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                      }}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-blue-400" />
-                      Export Clinical Report
-                    </button>
-                  </div>
-                </div>
-              )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+        {/* Input Panel */}
+        <div style={{ backgroundColor: '#1e293b', padding: '1.5rem', borderRadius: '12px' }}>
+          <h2>1. Upload Diagnostic Scan</h2>
+          <input type="file" accept="image/*" onChange={handleFileChange} style={{ marginBottom: '1rem', color: '#cbd5e1' }} />
+          {previewUrl && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <img src={previewUrl} alt="Scan Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
             </div>
-          </div>
+          )}
 
+          <h2>2. Clinical Observations</h2>
+          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>Duration of lesion / anomaly:</label>
+          <select
+            value={symptoms.duration}
+            onChange={(e) => setSymptoms({ ...symptoms, duration: e.target.value })}
+            style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '6px' }}
+          >
+            <option value="Under 1 month">Under 1 month</option>
+            <option value="1 to 6 months">1 to 6 months</option>
+            <option value="Over 6 months">Over 6 months</option>
+          </select>
+
+          <label style={{ display: 'block', marginBottom: '0.5rem', color: '#94a3b8' }}>Noticeable physical changes?</label>
+          <select
+            value={symptoms.physicalChanges}
+            onChange={(e) => setSymptoms({ ...symptoms, physicalChanges: e.target.value })}
+            style={{ width: '100%', padding: '0.5rem', marginBottom: '1.5rem', backgroundColor: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: '6px' }}
+          >
+            <option value="Yes (growing/changing shape)">Yes (growing/changing shape)</option>
+            <option value="Unsure">Unsure</option>
+            <option value="No changes">No changes</option>
+          </select>
+
+          <button
+            onClick={handleAnalyze}
+            disabled={loading}
+            style={{ width: '100%', padding: '0.75rem', backgroundColor: loading ? '#64748b' : '#0284c7', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: loading ? 'not-allowed' : 'pointer' }}
+          >
+            {loading ? 'Running Grad-CAM Inference...' : 'Run Analysis'}
+          </button>
+        </div>
+
+        {/* Results Panel */}
+        <div style={{ backgroundColor: '#1e293b', padding: '1.5rem', borderRadius: '12px' }}>
+          <h2>Diagnostic Segmentation Results</h2>
+          {result ? (
+            <div>
+              <div style={{ backgroundColor: '#0f172a', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                <p><strong>Malignancy Risk Score:</strong> <span style={{ color: '#f43f5e', fontSize: '1.25rem' }}>{result.riskScore}%</span></p>
+                <p><strong>Status:</strong> {result.status}</p>
+                <p><strong>Recommendation:</strong> {result.recommendation}</p>
+              </div>
+            </div>
+          ) : (
+            <p style={{ color: '#64748b' }}>Upload a scan image on the left to activate the visualization and risk assessment.</p>
+          )}
         </div>
       </div>
     </div>
