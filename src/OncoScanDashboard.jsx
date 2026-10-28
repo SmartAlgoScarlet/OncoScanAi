@@ -34,10 +34,10 @@ export default function OncoScanDashboard() {
       formData.append('image', selectedFile);
       formData.append('symptoms', JSON.stringify(symptoms));
 
-      const res = await fetch('http://localhost:8000/predict', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch('https://oncoscanai.onrender.com/predict', {
+  method: 'POST',
+  body: formData
+});
 
       const data = await res.json();
 
